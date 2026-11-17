@@ -42,7 +42,9 @@ build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
 # Linking it pulls in the static library and its native link dependencies. The
 # build_*_extension helpers already used the plain target_link_libraries
 # signature on these targets, so we must match it (no PUBLIC/PRIVATE keyword).
-target_link_libraries(${EXTENSION_NAME} hdfs_bridge)
+# The imported Rust target is only needed while building, not in DuckDB's
+# installed CMake export.
+target_link_libraries(${EXTENSION_NAME} $<BUILD_INTERFACE:hdfs_bridge>)
 target_link_libraries(${LOADABLE_EXTENSION_NAME} hdfs_bridge)
 
 # Native libraries pulled in by the bridge's third-party crates (TLS / OS
@@ -64,12 +66,8 @@ if(HDFS_NATIVE_LIBS)
     target_link_libraries(${LOADABLE_EXTENSION_NAME} ${HDFS_NATIVE_LIBS})
 endif()
 
-# Install the static extension archive. We intentionally omit
-# EXPORT "${DUCKDB_EXPORT_SET}" (used by core extensions for find_package(DuckDB)
-# consumers): exporting it would require the imported Corrosion target
-# `hdfs_bridge` to also be installable, which it is not. A community extension
-# distributes the loadable `.duckdb_extension`, so the export set is unneeded.
 install(
   TARGETS ${EXTENSION_NAME}
+  EXPORT "${DUCKDB_EXPORT_SET}"
   LIBRARY DESTINATION "${INSTALL_LIB_DIR}"
   ARCHIVE DESTINATION "${INSTALL_LIB_DIR}")
