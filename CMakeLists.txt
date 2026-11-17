@@ -39,12 +39,10 @@ build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
 build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
 
 # Corrosion exposes the crate's library target (cargo lib name `hdfs_bridge`).
-# Linking it pulls in the static library and its native link dependencies. The
-# build_*_extension helpers already used the plain target_link_libraries
-# signature on these targets, so we must match it (no PUBLIC/PRIVATE keyword).
-# The imported Rust target is only needed while building, not in DuckDB's
-# installed CMake export.
-target_link_libraries(${EXTENSION_NAME} $<BUILD_INTERFACE:hdfs_bridge>)
+# Linking it pulls in the static library and its native link dependencies. Keep
+# the imported Rust target out of the static extension's link interface: DuckDB
+# exports that interface, while Corrosion's imported target is not exportable.
+set_property(TARGET ${EXTENSION_NAME} APPEND PROPERTY LINK_LIBRARIES hdfs_bridge)
 target_link_libraries(${LOADABLE_EXTENSION_NAME} hdfs_bridge)
 
 # Native libraries pulled in by the bridge's third-party crates (TLS / OS
