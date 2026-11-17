@@ -38,18 +38,19 @@ corrosion_import_crate(MANIFEST_PATH ${CMAKE_CURRENT_LIST_DIR}/hdfs-bridge/Cargo
 build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
 build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
 
-# Corrosion exposes the crate's library target (cargo lib name `hdfs_bridge`).
-# Linking it pulls in the static library and its native link dependencies. Keep
-# the imported Rust target out of the static extension's link interface: DuckDB
-# exports that interface, while Corrosion's imported target is not exportable.
-set_property(TARGET ${EXTENSION_NAME} APPEND PROPERTY LINK_LIBRARIES hdfs_bridge)
+# Corrosion exposes the crate's static library through an imported target. Use
+# its archive and native dependencies directly in the static extension's link
+# interface so DuckDB can export that interface without exporting Corrosion.
+add_dependencies(${EXTENSION_NAME} hdfs_bridge-static)
+target_link_libraries(
+    ${EXTENSION_NAME}
+    "$<TARGET_LINKER_FILE:hdfs_bridge-static>"
+    ${Rust_CARGO_TARGET_LINK_NATIVE_LIBS})
 target_link_libraries(${LOADABLE_EXTENSION_NAME} hdfs_bridge)
 
 # Native libraries pulled in by the bridge's third-party crates (TLS / OS
-# integration). Corrosion propagates the Rust std native libs for a staticlib
-# but not these, so list them explicitly. The macOS set is authoritative (from
-# `cargo rustc -- --print native-static-libs`); Linux's needs (pthread/dl/m) are
-# already covered by Corrosion's std libs.
+# integration). The macOS set is authoritative (from `cargo rustc -- --print
+# native-static-libs`); Corrosion provides the standard Rust native libraries.
 if(APPLE)
     set(HDFS_NATIVE_LIBS "-framework Security" "-framework SystemConfiguration"
                          "-framework CoreFoundation" iconv)
